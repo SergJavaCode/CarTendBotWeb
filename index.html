@@ -1,33 +1,87 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Пример Telegram WebApp</title>
-    <meta name="description" content="Простой пример интеграции Telegram WebApp.">
+    <title>Данные автомобиля</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>/* стили остаются без изменений */</style>
 </head>
 <body>
-    
+    <div class="container">
+        <!-- форма остается без изменений -->
+    </div>
+
     <script>
-        // Инициализация объекта Telegram WebApp
-        let tg = window.Telegram.WebApp;
-        tg.expand();
+        // ВАЖНО: Инициализация WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            Telegram.WebApp.ready(); // ✅ КРИТИЧЕСКИ ВАЖНАЯ СТРОКА
+            Telegram.WebApp.expand(); // Раскрываем на весь экран
+            Telegram.WebApp.enableClosingConfirmation(); // Подтверждение закрытия
+            
+            console.log('WebApp инициализирован:', Telegram.WebApp.initData);
+        }
 
-        // Установка текста основной кнопки
-        tg.MainButton.text = "Тест";
+        // Функция отправки данных
+        function sendDataToBot() {
+            if (!window.Telegram?.WebApp) {
+                alert('WebApp доступен только в Telegram!');
+                return;
+            }
 
-        // Дополнительная настройка основной кнопки
-        tg.MainButton.color = "#0088cc"; // Установка цвета кнопки
-        tg.MainButton.textColor = "#ffffff"; // Установка цвета текста на кнопке
+            const carData = {
+                year: document.getElementById('year').value.trim(),
+                vin: document.getElementById('vin').value.trim(),
+                plate: document.getElementById('plate').value.trim(),
+                engine: document.getElementById('engine').value.trim(),
+                mileage: parseInt(document.getElementById('mileage').value) || 0,
+                color: document.getElementById('color').value.trim()
+            };
 
-        // Показать основную кнопку
-        tg.MainButton.show();
+            // Валидация
+            if (!carData.year || !carData.vin || !carData.plate || !carData.engine || !carData.color) {
+                Telegram.WebApp.showPopup({
+                    title: 'Ошибка',
+                    message: 'Заполните все поля!',
+                    buttons: [{ type: 'ok' }]
+                });
+                return;
+            }
 
-        // Обработчик события нажатия на кнопку
-        tg.MainButton.onClick(() => {
-            alert("Нажата основная кнопка Telegram WebApp!");
+            // Отправка данных
+            try {
+                const dataToSend = {
+                    type: "car_data",
+                    data: carData,
+                    timestamp: new Date().toISOString()
+                };
+                
+                Telegram.WebApp.sendData(JSON.stringify(dataToSend));
+                Telegram.WebApp.close();
+                
+            } catch (error) {
+                Telegram.WebApp.showPopup({
+                    title: 'Ошибка отправки',
+                    message: error.message,
+                    buttons: [{ type: 'ok' }]
+                });
+            }
+        }
+
+        // Обработчики событий Telegram WebApp
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.Telegram?.WebApp) {
+                // Событие изменения размера
+                Telegram.WebApp.onEvent('viewportChanged', (e) => {
+                    console.log('Viewport changed:', e);
+                });
+                
+                // Событие закрытия
+                Telegram.WebApp.onEvent('close', () => {
+                    console.log('WebApp закрывается');
+                });
+            }
         });
     </script>
 </body>
-</html> 
+</html>
