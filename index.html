@@ -5,20 +5,163 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Данные автомобиля</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>/* стили остаются прежними */</style>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .required::after {
+            content: " *";
+            color: #ff4757;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <h1>🚗 Введите данные автомобиля</h1>
         
         <form id="carForm">
-            <!-- поля формы -->
+            <div class="form-group">
+                <label for="year" class="required">Год выпуска</label>
+                <input type="text" id="year" placeholder="2020" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="vin" class="required">VIN номер</label>
+                <input type="text" id="vin" placeholder="WF0XXX12345678901" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="plate" class="required">Гос. номер</label>
+                <input type="text" id="plate" placeholder="А123БВ777" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="engine" class="required">Двигатель</label>
+                <input type="text" id="engine" placeholder="B58B30" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="mileage" class="required">Пробег (км)</label>
+                <input type="number" id="mileage" placeholder="50000" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="color" class="required">Цвет</label>
+                <input type="text" id="color" placeholder="Синий металлик" required>
+            </div>
+            
+            <button type="button" class="submit-btn" onclick="sendDataToBot()">
+                📤 Отправить данные
+            </button>
         </form>
     </div>
 
     <script>
-        // Функция отправки данных для inline WebApp
+        // Инициализация Telegram WebApp
+        function initTelegramWebApp() {
+            if (window.Telegram && window.Telegram.WebApp) {
+                try {
+                    Telegram.WebApp.ready();
+                    Telegram.WebApp.expand();
+                    console.log('Telegram WebApp инициализирован');
+                    return true;
+                } catch (error) {
+                    console.error('Ошибка инициализации WebApp:', error);
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        // Функция отправки данных в бота
         function sendDataToBot() {
+            // Собираем данные из формы
             const carData = {
                 year: document.getElementById('year').value.trim(),
                 vin: document.getElementById('vin').value.trim(),
@@ -28,34 +171,60 @@
                 color: document.getElementById('color').value.trim()
             };
             
+            console.log('Собранные данные:', carData);
+            
             // Валидация
             if (!carData.year || !carData.vin || !carData.plate || !carData.engine || !carData.color) {
-                showError('Заполните все обязательные поля!');
+                alert('Пожалуйста, заполните все обязательные поля!');
                 return;
             }
             
+            if (carData.vin.length !== 17) {
+                alert('VIN номер должен содержать 17 символов!');
+                return;
+            }
+            
+            // Для inline WebApp: сохраняем данные и закрываем
             if (window.Telegram && window.Telegram.WebApp) {
                 try {
                     const dataToSend = {
                         type: "car_data",
-                        data: carData
+                        data: carData,
+                        timestamp: new Date().toISOString()
                     };
                     
-                    // ДЛЯ INLINE WEBAPP: просто закрываем, данные автоматически отправляются в бот
+                    // ДЛЯ INLINE WEBAPP: данные автоматически отправятся при закрытии
+                    // Просто закрываем WebApp - данные передадутся в бот
                     Telegram.WebApp.close();
                     
                 } catch (error) {
-                    console.error('Ошибка:', error);
-                    showError('Ошибка отправки данных');
+                    console.error('Ошибка при отправке:', error);
+                    alert('Ошибка отправки данных: ' + error.message);
                 }
+            } else {
+                // Режим отладки (если открыто не в Telegram)
+                console.log('Режим отладки. Данные:', carData);
+                alert('Данные готовы к отправке! (в Telegram было бы отправлено)');
             }
         }
         
-        // Инициализация
+        // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
-            if (window.Telegram?.WebApp) {
-                Telegram.WebApp.ready();
-                Telegram.WebApp.expand();
+            console.log('WebApp загружен!');
+            
+            const isTelegram = initTelegramWebApp();
+            console.log('Работает в Telegram:', isTelegram);
+            
+            // Если в URL есть параметры, можно предзаполнить поля
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('test')) {
+                // Тестовые данные для отладки
+                document.getElementById('year').value = '2022';
+                document.getElementById('vin').value = 'WF0XXX12345678901';
+                document.getElementById('plate').value = 'А123БВ777';
+                document.getElementById('engine').value = 'B58B30';
+                document.getElementById('mileage').value = '50000';
+                document.getElementById('color').value = 'Синий металлик';
             }
         });
     </script>
