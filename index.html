@@ -143,22 +143,6 @@
     </div>
 
     <script>
-        // Инициализация Telegram WebApp
-        function initTelegramWebApp() {
-            if (window.Telegram && window.Telegram.WebApp) {
-                try {
-                    Telegram.WebApp.ready();
-                    Telegram.WebApp.expand();
-                    console.log('Telegram WebApp инициализирован');
-                    return true;
-                } catch (error) {
-                    console.error('Ошибка инициализации WebApp:', error);
-                    return false;
-                }
-            }
-            return false;
-        }
-
         // Функция отправки данных в бота
         function sendDataToBot() {
             // Собираем данные из формы
@@ -184,7 +168,7 @@
                 return;
             }
             
-            // Для inline WebApp: сохраняем данные и закрываем
+            // Отправка данных через Telegram WebApp
             if (window.Telegram && window.Telegram.WebApp) {
                 try {
                     const dataToSend = {
@@ -193,8 +177,12 @@
                         timestamp: new Date().toISOString()
                     };
                     
-                    // ДЛЯ INLINE WEBAPP: данные автоматически отправятся при закрытии
-                    // Просто закрываем WebApp - данные передадутся в бот
+                    console.log('Отправка данных в Telegram:', dataToSend);
+                    
+                    // КРИТИЧЕСКИ ВАЖНО: отправляем данные перед закрытием
+                    Telegram.WebApp.sendData(JSON.stringify(dataToSend));
+                    
+                    // Закрываем WebApp
                     Telegram.WebApp.close();
                     
                 } catch (error) {
@@ -202,9 +190,9 @@
                     alert('Ошибка отправки данных: ' + error.message);
                 }
             } else {
-                // Режим отладки (если открыто не в Telegram)
+                // Режим отладки
                 console.log('Режим отладки. Данные:', carData);
-                alert('Данные готовы к отправке! (в Telegram было бы отправлено)');
+                alert('Данные готовы к отправке!');
             }
         }
         
@@ -212,13 +200,14 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('WebApp загружен!');
             
-            const isTelegram = initTelegramWebApp();
-            console.log('Работает в Telegram:', isTelegram);
+            if (window.Telegram && window.Telegram.WebApp) {
+                Telegram.WebApp.ready();
+                Telegram.WebApp.expand();
+                console.log('Telegram WebApp инициализирован');
+            }
             
-            // Если в URL есть параметры, можно предзаполнить поля
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('test')) {
-                // Тестовые данные для отладки
+            // Автозаполнение для тестирования
+            if (new URLSearchParams(window.location.search).has('test')) {
                 document.getElementById('year').value = '2022';
                 document.getElementById('vin').value = 'WF0XXX12345678901';
                 document.getElementById('plate').value = 'А123БВ777';
