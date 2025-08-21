@@ -84,9 +84,36 @@
             transform: translateY(0);
         }
         
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         .required::after {
             content: " *";
             color: #ff4757;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 15px;
+            color: #667eea;
+        }
+        
+        .error-message {
+            color: #ff4757;
+            text-align: center;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .success-message {
+            color: #2ed573;
+            text-align: center;
+            margin-top: 15px;
+            display: none;
         }
         
         @media (max-width: 480px) {
@@ -136,15 +163,87 @@
                 <input type="text" id="color" placeholder="Синий металлик" required>
             </div>
             
-            <button type="button" class="submit-btn" onclick="sendDataToBot()">
+            <button type="button" class="submit-btn" id="submitBtn" onclick="sendDataToServer()">
                 📤 Отправить данные
             </button>
+            
+            <div id="loading" class="loading">
+                ⏳ Отправка данных...
+            </div>
+            
+            <div id="errorMessage" class="error-message">
+                ❌ Ошибка отправки данных
+            </div>
+            
+            <div id="successMessage" class="success-message">
+                ✅ Данные успешно отправлены!
+            </div>
         </form>
     </div>
 
     <script>
-        // Функция отправки данных в бота
-        function sendDataToBot() {
+        let telegramUser = null;
+        let messageId = null;
+        let inlineMessageId = null;
+        
+        // Функция для парсинга initData
+        function parseInitData(initData) {
+            const params = new URLSearchParams(initData);
+            const result = {};
+            
+            for (const [key, value] of params) {
+                result[key] = value;
+            }
+            return result;
+        }
+        
+        // Функция для получения данных из initData
+        function getInitData() {
+            if (window.Telegram && window.Telegram.WebApp && Telegram.WebApp.initData) {
+                return parseInitData(Telegram.WebApp.initData);
+            }
+            return null;
+        }
+        
+        // Функция для получения данных пользователя из Telegram
+        function getTelegramUserData() {
+            if (window.Telegram && window.Telegram.WebApp) {
+                return {
+                    id: Telegram.WebApp.initDataUnsafe.user?.id,
+                    first_name: Telegram.WebApp.initDataUnsafe.user?.first_name,
+                    last_name: Telegram.WebApp.initDataUnsafe.user?.last_name,
+                    username: Telegram.WebApp.initDataUnsafe.user?.username,
+                    language_code: Telegram.WebApp.initDataUnsafe.user?.language_code,
+                    is_premium: Telegram.WebApp.initDataUnsafe.user?.is_premium
+                };
+            }
+            return null;
+        }
+        
+        // Функция для получения message_id из initData
+        function getMessageData() {
+            const initData = getInitData();
+            if (initData) {
+                return {
+                    message_id: initData.start_param || initData.message_id || null,
+                    inline_message_id: initData.inline_message_id || null,
+                    chat_id: initData.chat_id || initData.chat_instance || null
+                };
+            }
+            return null;
+        }
+        
+        // Функция отправки данных на сервер
+        async function sendDataToServer() {
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const errorMessage = document.getElementById('errorMessage');
+            const successMessage = document.getElementById('successMessage');
+            
+            // Скрываем предыдущие сообщения
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+            
             // Собираем данные из формы
             const carData = {
                 year: document.getElementById('year').value.trim(),
@@ -155,7 +254,7 @@
                 color: document.getElementById('color').value.trim()
             };
             
-            console.log('Собранные данные:', carData);
+            console.log('Собранные данные автомобиля:', carData);
             
             // Валидация
             if (!carData.year || !carData.vin || !carData.plate || !carData.engine || !carData.color) {
@@ -168,31 +267,71 @@
                 return;
             }
             
-            // Отправка данных через Telegram WebApp
-            if (window.Telegram && window.Telegram.WebApp) {
-                try {
-                    const dataToSend = {
-                        type: "car_data",
-                        data: carData,
-                        timestamp: new Date().toISOString()
-                    };
+            // Получаем данные пользователя
+            telegramUser = getTelegramUserData();
+            if (!telegramUser || !telegramUser.id) {
+                alert('Ошибка: не удалось получить данные пользователя');
+                return;
+            }
+            
+            // Получаем данные сообщения
+            const messageData = getMessageData();
+            console.log('Данные сообщения:', messageData);
+            
+            // Подготавливаем данные для отправки
+            const dataToSend = {
+                type: "car_data",
+                user: telegramUser,
+                car: carData,
+                message_data: messageData,
+                timestamp: new Date().toISOString(),
+                webapp_init_data: window.Telegram?.WebApp?.initData || null
+            };
+            
+            console.log('Данные для отправки:', dataToSend);
+            
+            // Блокируем кнопку и показываем загрузку
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            
+            try {
+                // Отправляем POST запрос на сервер
+                const response = await fetch('https://195.133.197.49/carinfo', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(dataToSend)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Данные успешно отправлены:', result);
                     
-                    console.log('Отправка данных в Telegram:', dataToSend);
+                    // Показываем сообщение об успехе
+                    successMessage.style.display = 'block';
                     
-                    // КРИТИЧЕСКИ ВАЖНО: отправляем данные перед закрытием
-                    Telegram.WebApp.sendData(JSON.stringify(dataToSend));
+                    // Закрываем WebApp через 2 секунды
+                    setTimeout(() => {
+                        if (window.Telegram && window.Telegram.WebApp) {
+                            Telegram.WebApp.close();
+                        }
+                    }, 2000);
                     
-                    // Закрываем WebApp
-                    Telegram.WebApp.close();
-                    
-                } catch (error) {
-                    console.error('Ошибка при отправке:', error);
-                    alert('Ошибка отправки данных: ' + error.message);
+                } else {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
-            } else {
-                // Режим отладки
-                console.log('Режим отладки. Данные:', carData);
-                alert('Данные готовы к отправке!');
+                
+            } catch (error) {
+                console.error('Ошибка при отправке:', error);
+                errorMessage.textContent = `❌ Ошибка отправки: ${error.message}`;
+                errorMessage.style.display = 'block';
+                
+                // Разблокируем кнопку
+                submitBtn.disabled = false;
+            } finally {
+                // Скрываем индикатор загрузки
+                loading.style.display = 'none';
             }
         }
         
@@ -204,6 +343,18 @@
                 Telegram.WebApp.ready();
                 Telegram.WebApp.expand();
                 console.log('Telegram WebApp инициализирован');
+                
+                // Получаем данные пользователя при загрузке
+                telegramUser = getTelegramUserData();
+                console.log('Данные пользователя:', telegramUser);
+                
+                // Получаем данные сообщения при загрузке
+                const messageData = getMessageData();
+                console.log('Данные сообщения:', messageData);
+                
+                // Сохраняем message_id для использования
+                messageId = messageData?.message_id;
+                inlineMessageId = messageData?.inline_message_id;
             }
             
             // Автозаполнение для тестирования
@@ -214,7 +365,29 @@
                 document.getElementById('engine').value = 'B58B30';
                 document.getElementById('mileage').value = '50000';
                 document.getElementById('color').value = 'Синий металлик';
+                
+                // Тестовые данные пользователя
+                telegramUser = {
+                    id: 123456789,
+                    first_name: "Test",
+                    last_name: "User",
+                    username: "testuser",
+                    language_code: "ru",
+                    is_premium: true
+                };
+                
+                // Тестовые данные сообщения
+                messageId = 987654321;
+                inlineMessageId = "test_inline_message_123";
             }
+            
+            // Добавляем обработчик отправки формы по Enter
+            document.getElementById('carForm').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendDataToServer();
+                }
+            });
         });
     </script>
 </body>
