@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html>
 <body>
-    <button id="btn">Нажми меня</button>
-    <script>
-        document.getElementById('btn').onclick = () => {
-            Telegram.WebApp.answerWebAppQuery(
-                JSON.stringify({string: "Hi!!!!"})
-            );
-        }
-    </script>
+<button id="btn">Нажми меня</button>
+<script>
+document.getElementById('btn').onclick = () => {
+    Telegram.WebApp.answerWebAppQuery(JSON.stringify({string: "Hi!!!!"}));
+    window.close();
+}
+</script>
 </body>
 </html>
