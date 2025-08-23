@@ -28,7 +28,7 @@
             padding: 30px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
         }
         
         h1 {
@@ -130,6 +130,57 @@
             display: none;
         }
         
+        .log-container {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            background: #f8f9fa;
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+        }
+        
+        .log-toggle {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .log-time {
+            color: #6c757d;
+            margin-right: 8px;
+        }
+        
+        .log-info {
+            color: #007bff;
+        }
+        
+        .log-error {
+            color: #dc3545;
+        }
+        
+        .log-success {
+            color: #28a745;
+        }
+        
+        .log-warning {
+            color: #ffc107;
+        }
+        
         @media (max-width: 480px) {
             .container {
                 padding: 20px;
@@ -194,6 +245,12 @@
                 ✅ Данные успешно отправлены!
             </div>
             
+            <button type="button" class="log-toggle" onclick="toggleLog()">
+                📋 Показать/скрыть лог
+            </button>
+            
+            <div id="logContainer" class="log-container"></div>
+            
             <div id="debugInfo" class="debug-info">
                 Режим отладки: данные в консоли
             </div>
@@ -201,6 +258,49 @@
     </div>
 
     <script>
+        // Глобальная переменная для лога
+        const appLog = [];
+        
+        // Функция для добавления записи в лог
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = {
+                timestamp,
+                message,
+                type
+            };
+            
+            appLog.push(logEntry);
+            updateLogDisplay();
+            
+            // Также выводим в консоль
+            const consoleMethod = type === 'error' ? 'error' : 
+                                 type === 'warning' ? 'warn' : 'log';
+            console[consoleMethod](`[${timestamp}] ${message}`);
+        }
+        
+        // Обновление отображения лога
+        function updateLogDisplay() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = '';
+            
+            appLog.forEach(entry => {
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry log-${entry.type}`;
+                logEntry.innerHTML = `<span class="log-time">[${entry.timestamp}]</span> ${entry.message}`;
+                logContainer.appendChild(logEntry);
+            });
+            
+            // Прокрутка к последнему сообщению
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Переключение видимости лога
+        function toggleLog() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.style.display = logContainer.style.display === 'none' ? 'block' : 'none';
+        }
+        
         // Основная функция отправки данных
         async function sendData() {
             const submitBtn = document.getElementById('submitBtn');
@@ -215,6 +315,8 @@
             successMessage.style.display = 'none';
             debugInfo.style.display = 'none';
             
+            addLog('Начало сбора данных автомобиля', 'info');
+            
             // Собираем данные из формы
             const carData = {
                 year: document.getElementById('year').value.trim(),
@@ -225,29 +327,37 @@
                 color: document.getElementById('color').value.trim()
             };
             
-            console.log('Собранные данные автомобиля:', carData);
+            addLog(`Собранные данные: ${JSON.stringify(carData)}`, 'info');
             
             // Валидация
             if (!carData.year || !carData.vin || !carData.plate || !carData.engine || !carData.color) {
-                alert('Пожалуйста, заполните все обязательные поля!');
+                const errorMsg = 'Пожалуйста, заполните все обязательные поля!';
+                addLog(errorMsg, 'error');
+                alert(errorMsg);
                 return;
             }
             
             if (carData.vin.length !== 17) {
-                alert('VIN номер должен содержать 17 символов!');
+                const errorMsg = 'VIN номер должен содержать 17 символов!';
+                addLog(errorMsg, 'error');
+                alert(errorMsg);
                 return;
             }
             
             // Получаем данные пользователя
             const userData = getTelegramUserData();
             if (!userData || !userData.id) {
-                alert('Ошибка: не удалось получить данные пользователя');
+                const errorMsg = 'Ошибка: не удалось получить данные пользователя';
+                addLog(errorMsg, 'error');
+                alert(errorMsg);
                 return;
             }
             
+            addLog(`Данные пользователя получены: ID ${userData.id}`, 'info');
+            
             // Получаем данные сообщения
             const messageData = getMessageData();
-            console.log('Данные сообщения:', messageData);
+            addLog(`Данные сообщения: ${JSON.stringify(messageData)}`, 'info');
             
             // Подготавливаем данные для отправки
             const dataToSend = {
@@ -259,7 +369,7 @@
                 webapp_init_data: window.Telegram?.WebApp?.initData || null
             };
             
-            console.log('Полные данные для отправки:', JSON.stringify(dataToSend, null, 2));
+            addLog('Подготовка данных для отправки завершена', 'info');
             
             // Блокируем кнопку и показываем загрузку
             submitBtn.disabled = true;
@@ -267,7 +377,7 @@
             
             try {
                 // Отправляем POST запрос на сервер
-                console.log('🔄 Отправка данных на сервер...');
+                addLog('🔄 Отправка данных на сервер...', 'info');
                 
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 15000); // Таймаут 15 секунд
@@ -288,7 +398,8 @@
                 
                 if (response.ok) {
                     const result = await response.json();
-                    console.log('✅ Данные успешно отправлены:', result);
+                    addLog('✅ Данные успешно отправлены на сервер', 'success');
+                    addLog(`Ответ сервера: ${JSON.stringify(result)}`, 'info');
                     showSuccess();
                 } else {
                     const errorText = await response.text();
@@ -296,15 +407,17 @@
                 }
                 
             } catch (error) {
-                console.error('❌ Ошибка при отправке:', error);
-                
                 let errorText = 'Не удалось отправить данные. ';
                 if (error.name === 'AbortError') {
                     errorText += 'Таймаут соединения (15 секунд).';
+                    addLog('❌ Таймаут соединения при отправке данных', 'error');
                 } else if (error.name === 'TypeError') {
                     errorText += 'Проблемы с сетью или CORS.';
+                    addLog('❌ Ошибка сети или CORS при отправке данных', 'error');
+                    addLog(`Детали ошибки: ${error.message}`, 'error');
                 } else {
                     errorText += error.message;
+                    addLog(`❌ Ошибка при отправке: ${error.message}`, 'error');
                 }
                 
                 showError(errorText);
@@ -368,19 +481,21 @@
         
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 WebApp загружен!');
+            addLog('🚀 WebApp загружен!', 'info');
             
             if (window.Telegram && window.Telegram.WebApp) {
                 Telegram.WebApp.ready();
                 Telegram.WebApp.expand();
-                console.log('✅ Telegram WebApp инициализирован');
+                addLog('✅ Telegram WebApp инициализирован', 'success');
                 
                 // Логируем все доступные данные
-                console.log('📊 InitDataUnsafe:', Telegram.WebApp.initDataUnsafe);
-                console.log('👤 User:', Telegram.WebApp.initDataUnsafe.user);
-                console.log('💬 Start param:', Telegram.WebApp.initDataUnsafe.start_param);
+                addLog('📊 InitDataUnsafe данные получены', 'info');
+                if (Telegram.WebApp.initDataUnsafe.user) {
+                    addLog(`👤 Пользователь: ID ${Telegram.WebApp.initDataUnsafe.user.id}`, 'info');
+                }
+                addLog(`💬 Start param: ${Telegram.WebApp.initDataUnsafe.start_param}`, 'info');
             } else {
-                console.log('⚠️ Telegram WebApp не обнаружен, режим отладки');
+                addLog('⚠️ Telegram WebApp не обнаружен, режим отладки', 'warning');
             }
             
             // Автозаполнение для тестирования
@@ -391,7 +506,7 @@
                 document.getElementById('engine').value = 'B58B30';
                 document.getElementById('mileage').value = '50000';
                 document.getElementById('color').value = 'Синий металлик';
-                console.log('🧪 Тестовые данные заполнены');
+                addLog('🧪 Тестовые данные заполнены', 'info');
             }
             
             // Добавляем обработчик отправки формы по Enter
@@ -401,6 +516,11 @@
                     sendData();
                 }
             });
+            
+            // Показываем кнопку лога в режиме отладки
+            if (!window.Telegram || !window.Telegram.WebApp) {
+                document.querySelector('.log-toggle').style.display = 'block';
+            }
         });
     </script>
 </body>
