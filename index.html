@@ -1,21 +1,583 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Telegram WebApp</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Данные автомобиля</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 600px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .required::after {
+            content: " *";
+            color: #ff4757;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 15px;
+            color: #667eea;
+        }
+        
+        .error-message {
+            color: #ff4757;
+            text-align: center;
+            margin-top: 15px;
+            display: none;
+            font-size: 14px;
+            padding: 10px;
+            background: #ffeaea;
+            border-radius: 8px;
+        }
+        
+        .success-message {
+            color: #2ed573;
+            text-align: center;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .debug-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .log-container {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            background: #f8f9fa;
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+        }
+        
+        .log-toggle {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .log-time {
+            color: #6c757d;
+            margin-right: 8px;
+        }
+        
+        .log-info {
+            color: #007bff;
+        }
+        
+        .log-error {
+            color: #dc3545;
+        }
+        
+        .log-success {
+            color: #28a745;
+        }
+        
+        .log-warning {
+            color: #ffc107;
+        }
+        
+        .methods {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+        }
+        
+        .methods h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .method-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        .method-btn:hover {
+            background: #218838;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <button id="sendBtn">Отправить</button>
+    <div class="container">
+        <h1>🚗 Введите данные автомобиля</h1>
+        
+        <form id="carForm">
+            <div class="form-group">
+                <label for="year" class="required">Год выпуска</label>
+                <input type="text" id="year" placeholder="2020" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="vin" class="required">VIN номер</label>
+                <input type="text" id="vin" placeholder="WF0XXX12345678901" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="plate" class="required">Гос. номер</label>
+                <input type="text" id="plate" placeholder="А123БВ777" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="engine" class="required">Двигатель</label>
+                <input type="text" id="engine" placeholder="B58B30" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="mileage" class="required">Пробег (км)</label>
+                <input type="number" id="mileage" placeholder="50000" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="color" class="required">Цвет</label>
+                <input type="text" id="color" placeholder="Синий металлик" required>
+            </div>
+            
+            <button type="button" class="submit-btn" id="submitBtn" onclick="sendData()">
+                📤 Отправить данные (Telegram)
+            </button>
+            
+            <div class="methods">
+                <h3>Альтернативные методы отправки:</h3>
+                <button type="button" class="method-btn" onclick="sendViaJSONP()">
+                    📨 JSONP метод
+                </button>
+                <button type="button" class="method-btn" onclick="sendViaForm()">
+                    📝 Форма с target="_blank"
+                </button>
+                <button type="button" class="method-btn" onclick="sendViaImage()">
+                    🖼️ Beacon через изображение
+                </button>
+                <button type="button" class="method-btn" onclick="copyToClipboard()">
+                    📋 Скопировать данные
+                </button>
+            </div>
+            
+            <div id="loading" class="loading">
+                ⏳ Отправка данных...
+            </div>
+            
+            <div id="errorMessage" class="error-message">
+                ❌ Ошибка отправки данных
+                <div id="errorDetails"></div>
+            </div>
+            
+            <div id="successMessage" class="success-message">
+                ✅ Данные успешно отправлены!
+            </div>
+            
+            <button type="button" class="log-toggle" onclick="toggleLog()">
+                📋 Показать/скрыть лог
+            </button>
+            
+            <div id="logContainer" class="log-container"></div>
+            
+            <div id="debugInfo" class="debug-info">
+                Режим отладки: данные в консоли
+            </div>
+        </form>
+    </div>
 
-  <script>
-    const tg = window.Telegram.WebApp;
-
-    document.getElementById("sendBtn").addEventListener("click", () => {
-      tg.sendData(JSON.stringify({ string: "Hi!!!!" }));
-    });
-
-    tg.ready();
-  </script>
+    <script>
+        // Глобальная переменная для лога
+        const appLog = [];
+        
+        // Функция для добавления записи в лог
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = {
+                timestamp,
+                message,
+                type
+            };
+            
+            appLog.push(logEntry);
+            updateLogDisplay();
+            
+            // Также выводим в консоль
+            const consoleMethod = type === 'error' ? 'error' : 
+                                 type === 'warning' ? 'warn' : 'log';
+            console[consoleMethod](`[${timestamp}] ${message}`);
+        }
+        
+        // Обновление отображения лога
+        function updateLogDisplay() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = '';
+            
+            appLog.forEach(entry => {
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry log-${entry.type}`;
+                logEntry.innerHTML = `<span class="log-time">[${entry.timestamp}]</span> ${entry.message}`;
+                logContainer.appendChild(logEntry);
+            });
+            
+            // Прокрутка к последнему сообщению
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Переключение видимости лога
+        function toggleLog() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.style.display = logContainer.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        // Сбор данных формы
+        function collectFormData() {
+            const carData = {
+                year: document.getElementById('year').value.trim(),
+                vin: document.getElementById('vin').value.trim(),
+                plate: document.getElementById('plate').value.trim(),
+                engine: document.getElementById('engine').value.trim(),
+                mileage: parseInt(document.getElementById('mileage').value) || 0,
+                color: document.getElementById('color').value.trim()
+            };
+            
+            // Валидация
+            if (!carData.year || !carData.vin || !carData.plate || !carData.engine || !carData.color) {
+                const errorMsg = 'Пожалуйста, заполните все обязательные поля!';
+                addLog(errorMsg, 'error');
+                alert(errorMsg);
+                return null;
+            }
+            
+            if (carData.vin.length !== 17) {
+                const errorMsg = 'VIN номер должен содержать 17 символов!';
+                addLog(errorMsg, 'error');
+                alert(errorMsg);
+                return null;
+            }
+            
+            return carData;
+        }
+        
+        // Основная функция отправки данных через Telegram WebApp
+        function sendData() {
+            addLog('Используем метод Telegram WebApp', 'info');
+            
+            const carData = collectFormData();
+            if (!carData) return;
+            
+            if (window.Telegram && window.Telegram.WebApp) {
+                // Отправка данных через Telegram WebApp
+                Telegram.WebApp.sendData(JSON.stringify({
+                    type: "car_data",
+                    car: carData,
+                    timestamp: new Date().toISOString()
+                }));
+                
+                addLog('✅ Данные отправлены через Telegram WebApp', 'success');
+                showSuccess();
+            } else {
+                const errorMsg = 'Telegram WebApp не доступен';
+                addLog(errorMsg, 'error');
+                alert(errorMsg);
+            }
+        }
+        
+        // Метод 1: JSONP (требует поддержки на сервере)
+        function sendViaJSONP() {
+            addLog('Попытка отправки через JSONP', 'info');
+            
+            const carData = collectFormData();
+            if (!carData) return;
+            
+            const callbackName = 'jsonpCallback_' + Date.now();
+            const script = document.createElement('script');
+            
+            // Создаем callback функцию
+            window[callbackName] = function(response) {
+                addLog(`✅ JSONP ответ: ${JSON.stringify(response)}`, 'success');
+                delete window[callbackName];
+                document.body.removeChild(script);
+                showSuccess();
+            };
+            
+            const url = `https://195.133.197.49/carinfo?callback=${callbackName}&data=${encodeURIComponent(JSON.stringify(carData))}`;
+            script.src = url;
+            
+            // Таймаут для ошибки
+            setTimeout(() => {
+                if (window[callbackName]) {
+                    addLog('❌ Таймаут JSONP запроса', 'error');
+                    delete window[callbackName];
+                    document.body.removeChild(script);
+                }
+            }, 10000);
+            
+            document.body.appendChild(script);
+            addLog('JSONP запрос отправлен', 'info');
+        }
+        
+        // Метод 2: Форма с target="_blank"
+        function sendViaForm() {
+            addLog('Создание формы для отправки', 'info');
+            
+            const carData = collectFormData();
+            if (!carData) return;
+            
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'https://195.133.197.49/carinfo';
+            form.target = '_blank';
+            form.style.display = 'none';
+            
+            // Добавляем данные в форму
+            Object.keys(carData).forEach(key => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = carData[key];
+                form.appendChild(input);
+            });
+            
+            // Добавляем timestamp
+            const timestampInput = document.createElement('input');
+            timestampInput.type = 'hidden';
+            timestampInput.name = 'timestamp';
+            timestampInput.value = new Date().toISOString();
+            form.appendChild(timestampInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+            
+            addLog('✅ Форма отправлена в новом окне', 'success');
+            showSuccess();
+        }
+        
+        // Метод 3: Beacon через изображение (GET запрос)
+        function sendViaImage() {
+            addLog('Отправка через Beacon изображение', 'info');
+            
+            const carData = collectFormData();
+            if (!carData) return;
+            
+            const params = new URLSearchParams();
+            Object.keys(carData).forEach(key => {
+                params.append(key, carData[key]);
+            });
+            params.append('timestamp', new Date().toISOString());
+            params.append('method', 'beacon');
+            
+            const img = new Image();
+            img.src = `https://195.133.197.49/carinfo?${params.toString()}`;
+            img.style.display = 'none';
+            
+            img.onload = function() {
+                addLog('✅ Beacon запрос выполнен', 'success');
+                showSuccess();
+            };
+            
+            img.onerror = function() {
+                addLog('❌ Ошибка Beacon запроса', 'error');
+            };
+            
+            document.body.appendChild(img);
+            addLog('Beacon изображение создано', 'info');
+        }
+        
+        // Метод 4: Копирование в буфер обмена
+        function copyToClipboard() {
+            const carData = collectFormData();
+            if (!carData) return;
+            
+            const text = `Данные автомобиля:\nГод: ${carData.year}\nVIN: ${carData.vin}\nНомер: ${carData.plate}\nДвигатель: ${carData.engine}\nПробег: ${carData.mileage} км\nЦвет: ${carData.color}`;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                addLog('✅ Данные скопированы в буфер обмена', 'success');
+                alert('Данные скопированы в буфер обмена!');
+            }).catch(err => {
+                addLog('❌ Ошибка копирования: ' + err, 'error');
+            });
+        }
+        
+        // Показать успех
+        function showSuccess() {
+            const successMessage = document.getElementById('successMessage');
+            successMessage.style.display = 'block';
+            
+            // Закрываем WebApp через 2 секунды (только в Telegram)
+            setTimeout(() => {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    Telegram.WebApp.close();
+                }
+            }, 2000);
+        }
+        
+        // Показать ошибку
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            const errorDetails = document.getElementById('errorDetails');
+            
+            errorDetails.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+        
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('🚀 WebApp загружен!', 'info');
+            
+            if (window.Telegram && window.Telegram.WebApp) {
+                Telegram.WebApp.ready();
+                Telegram.WebApp.expand();
+                addLog('✅ Telegram WebApp инициализирован', 'success');
+                
+                // Скрываем альтернативные методы в Telegram
+                document.querySelector('.methods').style.display = 'none';
+                
+                addLog('📊 InitDataUnsafe данные получены', 'info');
+            } else {
+                addLog('⚠️ Telegram WebApp не обнаружен, показываем альтернативные методы', 'warning');
+                document.querySelector('.methods').style.display = 'block';
+            }
+            
+            // Автозаполнение для тестирования
+            if (new URLSearchParams(window.location.search).has('test')) {
+                document.getElementById('year').value = '2022';
+                document.getElementById('vin').value = 'WF0XXX12345678901';
+                document.getElementById('plate').value = 'А123БВ777';
+                document.getElementById('engine').value = 'B58B30';
+                document.getElementById('mileage').value = '50000';
+                document.getElementById('color').value = 'Синий металлик';
+                addLog('🧪 Тестовые данные заполнены', 'info');
+            }
+            
+            // Добавляем обработчик отправки формы по Enter
+            document.getElementById('carForm').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendData();
+                }
+            });
+            
+            // Показываем кнопку лога в режиме отладки
+            document.querySelector('.log-toggle').style.display = 'block';
+        });
+    </script>
 </body>
 </html>
