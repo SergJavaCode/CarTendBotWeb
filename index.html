@@ -12,7 +12,6 @@
     const tg = window.Telegram.WebApp;
 
     document.getElementById("sendBtn").addEventListener("click", () => {
-      // Отправляем строку в бот
       tg.sendData(JSON.stringify({ string: "Hi!!!!" }));
     });
 
